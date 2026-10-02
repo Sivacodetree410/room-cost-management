@@ -1,0 +1,345 @@
+<div class="cost-split-view">
+  <!-- Page Header -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div class="d-flex align-items-center gap-2">
+      <div class="module-icon bg-success text-white">
+        <i class="bi bi-pie-chart-fill"></i>
+      </div>
+      <div>
+        <h2 class="mb-1">4. Dynamic Bachelor Room Cost Split</h2>
+        <p class="text-muted mb-0 small">
+          Fair cost splitting for bachelor boys based on exact days stayed in the room during the month.
+        </p>
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-rcms-primary" (click)="syncToPayments()" id="btn-sync-payments">
+        <i class="bi bi-arrow-right-circle-fill"></i> Push Shares to Roommate Payments
+      </button>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div *ngIf="toastMessage" class="alert mb-4 alert-dismissible fade show"
+       [ngClass]="toastType === 'success' ? 'alert-success border-success' : 'alert-danger border-danger'">
+    <i class="bi" [ngClass]="toastType === 'success' ? 'bi-check-circle-fill me-2' : 'bi-exclamation-triangle-fill me-2'"></i>
+    {{ toastMessage }}
+    <button type="button" class="btn-close" (click)="toastMessage = null"></button>
+  </div>
+
+  <!-- Selection & Mode Switcher Bar -->
+  <div class="rcms-card p-3 mb-4">
+    <div class="row g-3 align-items-center">
+      <div class="col-md-3">
+        <label class="form-label small fw-bold text-muted mb-1">Bachelor Room:</label>
+        <select
+          class="form-select rcms-select fw-semibold"
+          [(ngModel)]="selectedRoomNo"
+          (ngModelChange)="onRoomChange()"
+          id="select-split-room"
+        >
+          <option *ngFor="let r of rooms" [value]="r.roomNo">
+            {{ r.roomNo }} - {{ r.roomName }}
+          </option>
+        </select>
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label small fw-bold text-muted mb-1">Billing Month:</label>
+        <input
+          type="month"
+          class="form-control rcms-input fw-semibold"
+          [(ngModel)]="selectedMonth"
+          (ngModelChange)="onMonthChange()"
+          id="input-split-month"
+        />
+      </div>
+
+      <div class="col-md-6 text-md-end">
+        <label class="form-label small fw-bold text-muted d-block mb-1">Split Calculation Method:</label>
+        <div class="btn-group" role="group">
+          <button
+            type="button"
+            class="btn btn-sm"
+            [ngClass]="splitMode === 'prorated' ? 'btn-primary' : 'btn-outline-secondary'"
+            (click)="setSplitMode('prorated')"
+            id="btn-mode-prorated"
+          >
+            <i class="bi bi-calendar-range me-1"></i> Prorated (Days Stayed)
+          </button>
+          <button
+            type="button"
+            class="btn btn-sm"
+            [ngClass]="splitMode === 'equal' ? 'btn-primary' : 'btn-outline-secondary'"
+            (click)="setSplitMode('equal')"
+            id="btn-mode-equal"
+          >
+            <i class="bi bi-people me-1"></i> Equal Split (Flat)
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 4 Core Calculation KPI Cards -->
+  <div class="row g-3 mb-4" *ngIf="summary">
+    <div class="col-6 col-lg-3">
+      <div class="stat-card border-primary-subtle bg-primary-subtle">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-primary small fw-semibold text-uppercase">Total Room Bills</div>
+            <div class="stat-value text-primary font-mono">
+              ₹{{ summary.totalExpense | number:'1.0-0' }}
+            </div>
+          </div>
+          <div class="stat-icon bg-white text-primary shadow-sm">
+            <i class="bi bi-cash-stack"></i>
+          </div>
+        </div>
+        <div class="text-muted small mt-2">Rent + EB + Water + Wi-Fi + Maid</div>
+      </div>
+    </div>
+
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-muted small fw-semibold text-uppercase">Active Roommates</div>
+            <div class="stat-value text-info font-mono">
+              {{ summary.activeMembersCount }} Boys
+            </div>
+          </div>
+          <div class="stat-icon bg-info-subtle text-info">
+            <i class="bi bi-people-fill"></i>
+          </div>
+        </div>
+        <div class="text-muted small mt-2">Stayed in {{ summary.monthName }}</div>
+      </div>
+    </div>
+
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-muted small fw-semibold text-uppercase">Total Stay Days</div>
+            <div class="stat-value text-warning font-mono">
+              {{ summary.totalOccupiedDays }} <span class="fs-6 text-muted fw-normal">days</span>
+            </div>
+          </div>
+          <div class="stat-icon bg-warning-subtle text-warning">
+            <i class="bi bi-calendar-event"></i>
+          </div>
+        </div>
+        <div class="text-muted small mt-2">Combined stay across all roommates</div>
+      </div>
+    </div>
+
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-muted small fw-semibold text-uppercase">Per Day Room Cost</div>
+            <div class="stat-value text-success font-mono">
+              ₹{{ summary.dayRate | number:'1.2-2' }}
+            </div>
+          </div>
+          <div class="stat-icon bg-success-subtle text-success">
+            <i class="bi bi-calculator"></i>
+          </div>
+        </div>
+        <div class="text-muted small mt-2">₹{{ summary.totalExpense | number:'1.0-0' }} ÷ {{ summary.totalOccupiedDays }} days</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Mathematical Formula & Transparency Box -->
+  <div class="rcms-card p-4 mb-4 border-start border-4 border-primary">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-3">
+      <div class="d-flex align-items-center gap-2">
+        <span class="badge bg-primary px-3 py-2 fs-6">
+          <i class="bi bi-function me-1"></i> Active Formula
+        </span>
+        <span class="fw-bold fs-5">
+          {{ splitMode === 'prorated' ? 'Prorated Occupancy Calculation (Days Stayed in Room)' : 'Flat Equal Split' }}
+        </span>
+      </div>
+      <span class="badge bg-light text-secondary border px-3 py-1">
+        Bachelor Room: {{ summary?.roomNo }} &bull; Month: {{ summary?.monthName }}
+      </span>
+    </div>
+
+    <div class="bg-muted p-3 rounded-3 mb-3 font-mono">
+      <div *ngIf="splitMode === 'prorated'">
+        <div class="fw-bold text-primary fs-5 mb-2">
+          Roommate Share = (Total Room Expense / Total Occupied Days) × Roommate Stay Days
+        </div>
+        <div class="text-secondary small">
+          Step 1: Calculate Day Rate = ₹{{ summary?.totalExpense | number:'1.0-0' }} / {{ summary?.totalOccupiedDays }} days = <strong>₹{{ summary?.dayRate | number:'1.2-2' }} / day</strong>
+        </div>
+        <div class="text-secondary small">
+          Step 2: Multiply Day Rate by each roommate's active staying days in this month.
+        </div>
+        <div class="text-success small mt-2">
+          <i class="bi bi-check-circle-fill me-1"></i> Completely fair: If someone went to hometown or vacated early (like Rahul on 20-Jun), he only pays for the exact days he stayed!
+        </div>
+      </div>
+
+      <div *ngIf="splitMode === 'equal'">
+        <div class="fw-bold text-primary fs-5 mb-2">
+          Per Roommate = Total Room Expense / Active Roommates
+        </div>
+        <div class="text-secondary small">
+          Per Roommate = ₹{{ summary?.totalExpense | number:'1.0-0' }} / {{ summary?.activeMembersCount }} = <strong>₹{{ (summary ? summary.totalExpense / summary.activeMembersCount : 0) | number:'1.2-2' }} / roommate</strong>
+        </div>
+        <div class="text-muted small mt-2">
+          Note: Equal split assumes all roommates stayed for the entire month.
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Occupancy Heatmap Calendar -->
+    <div class="mt-4" *ngIf="summary && summary.memberSplits.length > 0">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <span class="small fw-bold text-muted text-uppercase">
+          <i class="bi bi-calendar3 me-1"></i> Roommate Stay Calendar Heatmap ({{ summary.totalDaysInMonth }} Days in {{ summary.monthName }})
+        </span>
+        <div class="d-flex gap-3 small text-muted">
+          <span class="d-flex align-items-center gap-1">
+            <span class="d-inline-block rounded bg-success" style="width: 12px; height: 12px;"></span> Stayed in Room
+          </span>
+          <span class="d-flex align-items-center gap-1">
+            <span class="d-inline-block rounded bg-light border" style="width: 12px; height: 12px;"></span> Away / Vacated / Not Joined
+          </span>
+        </div>
+      </div>
+
+      <div class="timeline-container bg-surface p-3 rounded border">
+        <div *ngFor="let member of summary.memberSplits" class="row align-items-center g-2 mb-2 pb-2 border-bottom">
+          <div class="col-md-3">
+            <div class="fw-bold">
+              {{ member.memberName }}
+              <span *ngIf="member.memberName === 'Siva'" class="badge bg-primary-subtle text-primary ms-1 small">Admin</span>
+            </div>
+            <div class="small text-muted font-mono" style="font-size: 0.78rem;">
+              Stay: {{ member.joinDate }} &rarr; {{ member.leaveDate || 'Ongoing' }}
+              <br>
+              <strong>({{ member.daysOccupiedInMonth }} days stayed)</strong>
+            </div>
+          </div>
+          <div class="col-md-9">
+            <div class="d-flex gap-1 flex-nowrap overflow-x-auto py-1">
+              <span
+                *ngFor="let d of getMonthDaysArray()"
+                class="day-box text-center small rounded"
+                [ngClass]="isMemberPresentOnDay(member, d) ? 'bg-success text-white fw-bold shadow-sm' : 'bg-light text-muted border'"
+                [title]="member.memberName + ' on ' + summary.month + '-' + (d < 10 ? '0' + d : d) + ': ' + (isMemberPresentOnDay(member, d) ? 'Stayed in room' : 'Away')"
+              >
+                {{ d }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detailed Split Breakdown Table -->
+  <div class="rcms-table-container mb-4">
+    <table class="rcms-table" id="table-split-details">
+      <thead>
+        <tr>
+          <th>Roommate</th>
+          <th>Join Date</th>
+          <th>Leave Date</th>
+          <th>Status</th>
+          <th>Days Stayed</th>
+          <th>Occupancy Ratio</th>
+          <th>{{ splitMode === 'prorated' ? 'Prorated Share (Exact)' : 'Equal Share' }}</th>
+          <th>Flat Split Compare</th>
+          <th>Fairness Difference</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let split of summary?.memberSplits">
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div class="avatar bg-primary text-white fw-bold rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                {{ split.memberName.charAt(0) }}
+              </div>
+              <div>
+                <div class="fw-bold text-main">
+                  {{ split.memberName }}
+                  <span *ngIf="split.memberName === 'Siva'" class="badge bg-primary-subtle text-primary ms-1 small">Admin</span>
+                </div>
+                <div class="small text-muted font-mono" style="font-size: 0.8rem;">{{ split.formulaExplanation }}</div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <span class="small font-mono text-muted">{{ split.joinDate }}</span>
+          </td>
+          <td>
+            <span *ngIf="split.leaveDate" class="small font-mono text-danger fw-semibold">
+              {{ split.leaveDate }}
+            </span>
+            <span *ngIf="!split.leaveDate" class="small font-mono text-muted fst-italic">
+              - (Active)
+            </span>
+          </td>
+          <td>
+            <span class="badge-pill-custom" [ngClass]="split.status === 'Active' ? 'badge-active' : 'badge-vacated'">
+              {{ split.status }}
+            </span>
+          </td>
+          <td>
+            <div class="fw-bold font-mono text-primary fs-6">
+              {{ split.daysOccupiedInMonth }} / {{ split.totalMonthDays }}
+            </div>
+            <div class="small text-muted">days stayed</div>
+          </td>
+          <td>
+            <span class="badge bg-light text-secondary border font-mono">
+              {{ split.occupancyRatio * 100 | number:'1.1-1' }}%
+            </span>
+          </td>
+          <td>
+            <div class="fw-bold font-mono fs-5 text-primary">
+              ₹{{ split.calculatedShare | number:'1.2-2' }}
+            </div>
+          </td>
+          <td>
+            <span class="font-mono text-muted">
+              ₹{{ split.equalShare | number:'1.2-2' }}
+            </span>
+          </td>
+          <td>
+            <span
+              class="badge font-mono"
+              [ngClass]="getDifference(split) < 0 ? 'bg-success-subtle text-success' : getDifference(split) > 0 ? 'bg-danger-subtle text-danger' : 'bg-secondary-subtle text-secondary'"
+            >
+              {{ getDifference(split) > 0 ? '+' : '' }}₹{{ getDifference(split) | number:'1.2-2' }}
+            </span>
+          </td>
+        </tr>
+
+        <tr *ngIf="!summary || summary.memberSplits.length === 0">
+          <td colspan="9" class="text-center py-5 text-muted">
+            <i class="bi bi-people display-4 d-block mb-3 opacity-50"></i>
+            <h5>No Active Roommates Found</h5>
+            <p class="small mb-0">Check roommate allocations for Room 101 in {{ selectedMonth }}.</p>
+          </td>
+        </tr>
+      </tbody>
+      <tfoot *ngIf="summary && summary.memberSplits.length > 0">
+        <tr class="fw-bold bg-light">
+          <td colspan="4">Total Shared Room Cost</td>
+          <td class="font-mono text-primary fs-6">{{ summary.totalOccupiedDays }} days</td>
+          <td class="font-mono">100%</td>
+          <td class="font-mono fs-5 text-primary">₹{{ summary.totalExpense | number:'1.2-2' }}</td>
+          <td class="font-mono text-muted">₹{{ summary.totalExpense | number:'1.2-2' }}</td>
+          <td class="font-mono text-muted">₹0.00</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+</div>

@@ -1,0 +1,466 @@
+<div class="room-master-view">
+  <!-- Page Header -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div>
+      <div class="d-flex align-items-center gap-2">
+        <div class="module-icon bg-primary text-white">
+          <i class="bi bi-door-open-fill"></i>
+        </div>
+        <div>
+          <h2 class="mb-1">1. Bachelor Room Master</h2>
+          <p class="text-muted mb-0 small">
+            Store bachelor room details only: Room No, Room Name, Max Cot/Bed Capacity, Current Roommates, Base Rent, and Status.
+          </p>
+        </div>
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-rcms-primary" (click)="openAddModal()" id="btn-add-room">
+        <i class="bi bi-plus-circle"></i> Add Bachelor Room
+      </button>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div *ngIf="toastMessage" class="alert mb-4 alert-dismissible fade show"
+       [ngClass]="toastType === 'success' ? 'alert-success border-success' : 'alert-danger border-danger'">
+    <i class="bi" [ngClass]="toastType === 'success' ? 'bi-check-circle-fill me-2' : 'bi-exclamation-triangle-fill me-2'"></i>
+    {{ toastMessage }}
+    <button type="button" class="btn-close" (click)="toastMessage = null"></button>
+  </div>
+
+  <!-- KPI Summary Row -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-muted small fw-semibold text-uppercase">Room Number</div>
+            <div class="stat-value font-mono">{{ rooms[0]?.roomNo || 'Room 101' }}</div>
+          </div>
+          <div class="stat-icon bg-primary-subtle text-primary">
+            <i class="bi bi-door-open"></i>
+          </div>
+        </div>
+        <div class="text-muted small mt-2">Bachelor Sharing Setup</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-muted small fw-semibold text-uppercase">Max Cot Capacity</div>
+            <div class="stat-value font-mono">{{ getTotalCapacity() }} Beds</div>
+          </div>
+          <div class="stat-icon bg-info-subtle text-info">
+            <i class="bi bi-people-fill"></i>
+          </div>
+        </div>
+        <div class="text-muted small mt-2">Beds available for boys</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-muted small fw-semibold text-uppercase">Current Roommates</div>
+            <div class="stat-value text-success font-mono">{{ getTotalOccupants() }} Boys</div>
+          </div>
+          <div class="stat-icon bg-success-subtle text-success">
+            <i class="bi bi-person-check-fill"></i>
+          </div>
+        </div>
+        <div class="text-muted small mt-2">Currently staying in room</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-muted small fw-semibold text-uppercase">Vacant Cot Spaces</div>
+            <div class="stat-value text-warning font-mono">{{ getTotalVacantBeds() }} Space</div>
+          </div>
+          <div class="stat-icon bg-warning-subtle text-warning">
+            <i class="bi bi-person-plus"></i>
+          </div>
+        </div>
+        <div class="text-muted small mt-2">Ready for new roommate</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search & Filters Toolbar -->
+  <div class="rcms-card p-3 mb-4">
+    <div class="row g-2 align-items-center">
+      <div class="col-md-5">
+        <div class="input-group">
+          <span class="input-group-text bg-transparent border-end-0 text-muted">
+            <i class="bi bi-search"></i>
+          </span>
+          <input
+            type="text"
+            class="form-control rcms-input border-start-0 ps-0"
+            placeholder="Search by Room No, Name, or Floor..."
+            [(ngModel)]="searchTerm"
+            (ngModelChange)="applyFilter()"
+            id="input-search-room"
+          />
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="d-flex align-items-center gap-2">
+          <label class="text-muted small fw-semibold text-nowrap mb-0">Status:</label>
+          <select
+            class="form-select rcms-select"
+            [(ngModel)]="statusFilter"
+            (ngModelChange)="applyFilter()"
+            id="select-status-filter"
+          >
+            <option value="ALL">All Statuses</option>
+            <option value="Available">Available Only</option>
+            <option value="Full">Full Only</option>
+            <option value="Maintenance">Maintenance</option>
+          </select>
+        </div>
+      </div>
+      <div class="col-md-3 text-md-end">
+        <span class="badge bg-secondary-subtle text-secondary py-2 px-3 rounded-pill">
+          <strong>{{ filteredRooms.length }}</strong> room configuration
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rooms Table -->
+  <div class="rcms-table-container mb-4">
+    <table class="rcms-table" id="table-rooms">
+      <thead>
+        <tr>
+          <th>Room No</th>
+          <th>Room Name</th>
+          <th>Max Capacity</th>
+          <th>Current Members</th>
+          <th>Base Rent</th>
+          <th>Status</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let room of filteredRooms">
+          <td>
+            <span class="badge bg-primary-subtle text-primary fw-bold font-mono px-2 py-1 fs-6">
+              {{ room.roomNo }}
+            </span>
+            <div *ngIf="room.floor" class="small text-muted">{{ room.floor }}</div>
+          </td>
+          <td>
+            <div class="fw-bold">{{ room.roomName }}</div>
+            <div *ngIf="room.depositAmount" class="small text-success fw-semibold">
+              <i class="bi bi-shield-check me-1"></i>Advance Deposit: ₹{{ room.depositAmount | number:'1.0-0' }}
+            </div>
+            <div class="d-flex flex-wrap gap-1 mt-1">
+              <span *ngFor="let am of room.amenities?.slice(0, 3)" class="badge bg-light text-secondary border small">
+                {{ am }}
+              </span>
+            </div>
+          </td>
+          <td>
+            <div class="fw-semibold">
+              <i class="bi bi-person-arms-up me-1 text-muted"></i>
+              {{ room.maxCapacity }} boys
+            </div>
+          </td>
+          <td>
+            <div>
+              <div class="d-flex align-items-center justify-content-between mb-1">
+                <span class="fw-bold fs-6">
+                  {{ room.currentMembers }} / {{ room.maxCapacity }}
+                </span>
+                <span class="small text-muted">
+                  {{ room.maxCapacity > 0 ? (room.currentMembers / room.maxCapacity * 100 | number:'1.0-0') : 0 }}% full
+                </span>
+              </div>
+              <div class="progress" style="height: 6px;">
+                <div
+                  class="progress-bar"
+                  role="progressbar"
+                  [style.width.%]="room.maxCapacity > 0 ? (room.currentMembers / room.maxCapacity * 100) : 0"
+                  [ngClass]="room.currentMembers >= room.maxCapacity ? 'bg-danger' : room.currentMembers > 0 ? 'bg-primary' : 'bg-success'"
+                ></div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <div class="fw-bold fs-6 font-mono text-primary">
+              ₹{{ room.baseRent | number:'1.0-0' }}
+            </div>
+            <div class="text-muted small">to house owner</div>
+          </td>
+          <td>
+            <span
+              class="badge-pill-custom"
+              [ngClass]="{
+                'badge-available': room.status === 'Available',
+                'badge-full': room.status === 'Full',
+                'badge-maintenance': room.status === 'Maintenance'
+              }"
+            >
+              <i
+                class="bi"
+                [ngClass]="{
+                  'bi-check-circle-fill': room.status === 'Available',
+                  'bi-dash-circle-fill': room.status === 'Full',
+                  'bi-tools': room.status === 'Maintenance'
+                }"
+              ></i>
+              {{ room.status }}
+            </span>
+          </td>
+          <td class="text-end">
+            <div class="btn-group btn-group-sm">
+              <button
+                class="btn btn-outline-secondary"
+                (click)="openResidentsModal(room)"
+                title="View Roommates"
+              >
+                <i class="bi bi-people"></i> Roommates ({{ room.currentMembers }})
+              </button>
+              <button
+                class="btn btn-outline-primary"
+                (click)="openEditModal(room)"
+                title="Edit Room Details"
+              >
+                <i class="bi bi-pencil-square"></i>
+              </button>
+              <button
+                class="btn btn-outline-danger"
+                (click)="deleteRoom(room)"
+                title="Delete Room"
+              >
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+
+        <tr *ngIf="filteredRooms.length === 0">
+          <td colspan="7" class="text-center py-5 text-muted">
+            <i class="bi bi-door-closed display-4 d-block mb-3 opacity-50"></i>
+            <h5>No Bachelor Room Found</h5>
+            <p class="small mb-3">Add your bachelor sharing room to get started.</p>
+            <button class="btn btn-sm btn-rcms-primary" (click)="openAddModal()">
+              <i class="bi bi-plus"></i> Add Bachelor Room
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Add / Edit Room Modal -->
+  <div *ngIf="isModalOpen" class="rcms-modal-backdrop" (click)="closeModal()">
+    <div class="rcms-modal-content" (click)="$event.stopPropagation()">
+      <div class="p-4 border-bottom d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold">
+          <i class="bi" [ngClass]="isEditMode ? 'bi-pencil-square text-primary' : 'bi-plus-circle text-success'"></i>
+          {{ isEditMode ? 'Edit Bachelor Room: ' + roomForm.roomNo : 'Configure Bachelor Room Master' }}
+        </h5>
+        <button type="button" class="btn-close" (click)="closeModal()"></button>
+      </div>
+
+      <div class="p-4">
+        <form (ngSubmit)="saveRoom()">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Room / Flat No *</label>
+              <input
+                type="text"
+                class="form-control rcms-input font-mono"
+                placeholder="e.g. Room 101, Flat 3B"
+                [(ngModel)]="roomForm.roomNo"
+                name="roomNo"
+                [disabled]="isEditMode"
+                required
+              />
+              <div class="form-text small">Room identifier number.</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Room Name *</label>
+              <input
+                type="text"
+                class="form-control rcms-input"
+                placeholder="e.g. Bachelors Haven (Boys Sharing)"
+                [(ngModel)]="roomForm.roomName"
+                name="roomName"
+                required
+              />
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Max Cot Capacity (Boys) *</label>
+              <input
+                type="number"
+                class="form-control rcms-input"
+                min="1"
+                max="10"
+                [(ngModel)]="roomForm.maxCapacity"
+                name="maxCapacity"
+                required
+              />
+              <div class="form-text small">Number of cot/bed spaces in the room.</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Base Room Rent (₹ / Month) *</label>
+              <div class="input-group">
+                <span class="input-group-text bg-light text-muted">₹</span>
+                <input
+                  type="number"
+                  class="form-control rcms-input"
+                  min="0"
+                  step="100"
+                  [(ngModel)]="roomForm.baseRent"
+                  name="baseRent"
+                  required
+                />
+              </div>
+              <div class="form-text small">Total rent payable to flat owner.</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Owner Advance Deposit (₹)</label>
+              <div class="input-group">
+                <span class="input-group-text bg-light text-muted">₹</span>
+                <input
+                  type="number"
+                  class="form-control rcms-input"
+                  min="0"
+                  step="500"
+                  [(ngModel)]="roomForm.depositAmount"
+                  name="depositAmount"
+                />
+              </div>
+              <div class="form-text small">Security deposit paid to landlord.</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Floor / Building Wing</label>
+              <input
+                type="text"
+                class="form-control rcms-input"
+                placeholder="e.g. 1st Floor, Sunshine Apts"
+                [(ngModel)]="roomForm.floor"
+                name="floor"
+              />
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Status</label>
+              <select class="form-select rcms-select" [(ngModel)]="roomForm.status" name="status">
+                <option value="Available">Available (Has Vacant Cot)</option>
+                <option value="Full">Full (All Cots Occupied)</option>
+                <option value="Maintenance">Maintenance / Renovation</option>
+              </select>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label small fw-bold">Room Amenities & Facilities</label>
+              <div class="d-flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  *ngFor="let am of availableAmenities"
+                  class="btn btn-sm"
+                  [ngClass]="hasAmenity(am) ? 'btn-primary' : 'btn-outline-secondary'"
+                  (click)="toggleAmenity(am)"
+                >
+                  <i class="bi" [ngClass]="hasAmenity(am) ? 'bi-check2' : 'bi-plus'"></i>
+                  {{ am }}
+                </button>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label small fw-bold">Notes / Rules</label>
+              <textarea
+                class="form-control rcms-input"
+                rows="2"
+                placeholder="e.g. Rent to be paid by 5th of every month, electricity shared equally..."
+                [(ngModel)]="roomForm.notes"
+                name="notes"
+              ></textarea>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+            <button type="button" class="btn btn-rcms-secondary" (click)="closeModal()">
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-rcms-primary">
+              <i class="bi bi-save"></i> {{ isEditMode ? 'Update Room' : 'Save Bachelor Room' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- View Room Residents Modal -->
+  <div *ngIf="isResidentsModalOpen" class="rcms-modal-backdrop" (click)="closeResidentsModal()">
+    <div class="rcms-modal-content" (click)="$event.stopPropagation()">
+      <div class="p-4 border-bottom d-flex justify-content-between align-items-center">
+        <div>
+          <h5 class="mb-1 fw-bold">
+            <i class="bi bi-people-fill text-primary me-2"></i>
+            Active Bachelor Roommates: {{ selectedRoom?.roomNo }}
+          </h5>
+          <span class="small text-muted">
+            {{ selectedRoomResidents.length }} of {{ selectedRoom?.maxCapacity }} cots occupied
+          </span>
+        </div>
+        <button type="button" class="btn-close" (click)="closeResidentsModal()"></button>
+      </div>
+
+      <div class="p-4">
+        <div *ngIf="selectedRoomResidents.length > 0" class="list-group list-group-flush">
+          <div *ngFor="let resident of selectedRoomResidents" class="list-group-item d-flex justify-content-between align-items-center px-0 py-3">
+            <div class="d-flex align-items-center gap-3">
+              <div class="avatar bg-primary text-white fw-bold rounded-circle d-flex align-items-center justify-content-center" style="width: 42px; height: 42px;">
+                {{ resident.memberName.charAt(0) }}
+              </div>
+              <div>
+                <div class="fw-bold">
+                  {{ resident.memberName }}
+                  <span *ngIf="resident.memberName === 'Siva'" class="badge bg-primary-subtle text-primary ms-1 small">Room Admin</span>
+                </div>
+                <div class="small text-muted" *ngIf="resident.collegeOrCompany">
+                  <i class="bi bi-briefcase me-1"></i> {{ resident.collegeOrCompany }}
+                </div>
+                <div class="small text-muted">
+                  <i class="bi bi-telephone me-1"></i> {{ resident.phone }} &bull;
+                  <i class="bi bi-calendar-event me-1"></i> Joined: {{ resident.joinDate }}
+                </div>
+              </div>
+            </div>
+            <div>
+              <span class="badge-pill-custom badge-active">
+                <i class="bi bi-check-circle-fill"></i> Active
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <div *ngIf="selectedRoomResidents.length === 0" class="text-center py-4 text-muted">
+          <i class="bi bi-person-x display-5 d-block mb-2 opacity-50"></i>
+          <p class="mb-0">No roommates currently staying in this room.</p>
+        </div>
+
+        <div class="d-flex justify-content-end mt-4 pt-3 border-top">
+          <button class="btn btn-rcms-secondary" (click)="closeResidentsModal()">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

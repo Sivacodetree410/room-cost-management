@@ -1,0 +1,55 @@
+/* Layout wrapper */
+:host {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+/* Header */
+header {
+    height: 72px;
+}
+
+/* Main content area */
+.main-section {
+    flex: 1;
+    min-height: calc(100vh - 132px);
+}
+
+/* Image */
+.image-section {
+    height: 100%;
+}
+
+.cover-image {
+    width: 100%;
+    height: 100%;
+
+    object-fit: cover;
+
+    display: block;
+}
+
+/* Login */
+.login-section {
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;   /* Changed from center */
+    padding: 30px 20px;
+    background: #f8f9fa;
+    overflow-y: auto;
+}
+
+/* Footer */
+.footer {
+
+    height: 60px;
+
+    margin: 0;
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+}

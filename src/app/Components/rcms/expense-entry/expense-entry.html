@@ -1,0 +1,381 @@
+<div class="expense-entry-view">
+  <!-- Page Header -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div class="d-flex align-items-center gap-2">
+      <div class="module-icon bg-warning text-dark">
+        <i class="bi bi-receipt-cutoff"></i>
+      </div>
+      <div>
+        <h2 class="mb-1">3. Bachelor Room Expense Entry</h2>
+        <p class="text-muted mb-0 small">
+          Monthly shared bachelor expenses: Room Rent, Electricity, Drinking Water Cans, Wi-Fi, Maid Cleaning, and Other Groceries.
+        </p>
+      </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2">
+      <button class="btn btn-outline-primary" (click)="autoPopulateBaseRent()" title="Auto-populate Landlord Rent">
+        <i class="bi bi-magic"></i> Auto-Add Landlord Rent
+      </button>
+      <button class="btn btn-rcms-primary" (click)="openAddModal()" id="btn-add-expense">
+        <i class="bi bi-plus-circle"></i> Add Room Bill / Item
+      </button>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div *ngIf="toastMessage" class="alert mb-4 alert-dismissible fade show"
+       [ngClass]="toastType === 'success' ? 'alert-success border-success' : 'alert-danger border-danger'">
+    <i class="bi" [ngClass]="toastType === 'success' ? 'bi-check-circle-fill me-2' : 'bi-exclamation-triangle-fill me-2'"></i>
+    {{ toastMessage }}
+    <button type="button" class="btn-close" (click)="toastMessage = null"></button>
+  </div>
+
+  <!-- Room & Month Selector Toolbar -->
+  <div class="rcms-card p-3 mb-4 bg-primary-subtle border-primary-subtle">
+    <div class="row g-3 align-items-center">
+      <div class="col-md-4">
+        <label class="form-label small fw-bold text-primary mb-1">
+          <i class="bi bi-door-open-fill me-1"></i> Bachelor Room:
+        </label>
+        <select
+          class="form-select rcms-select fw-semibold"
+          [(ngModel)]="selectedRoomNo"
+          (ngModelChange)="onRoomChange()"
+          id="select-expense-room"
+        >
+          <option *ngFor="let r of rooms" [value]="r.roomNo">
+            {{ r.roomNo }} - {{ r.roomName }} (Owner Rent: ₹{{ r.baseRent | number:'1.0-0' }})
+          </option>
+        </select>
+      </div>
+
+      <div class="col-md-4">
+        <label class="form-label small fw-bold text-primary mb-1">
+          <i class="bi bi-calendar-month-fill me-1"></i> Expense Month:
+        </label>
+        <input
+          type="month"
+          class="form-control rcms-input fw-semibold"
+          [(ngModel)]="selectedMonth"
+          (ngModelChange)="onMonthChange()"
+          id="input-expense-month"
+        />
+      </div>
+
+      <div class="col-md-4 text-md-end">
+        <div class="text-muted small">Total Room Expenses ({{ selectedMonth }}):</div>
+        <div class="display-6 fw-bold text-primary font-mono">
+          ₹{{ getTotalMonthlyExpense() | number:'1.2-2' }}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 6 Categories Quick Cards Grid -->
+  <div class="row g-3 mb-4">
+    <div *ngFor="let cat of categories" class="col-6 col-md-4 col-lg-2">
+      <div
+        class="card h-100 p-3 border text-center transition-all cursor-pointer"
+        [style.border-color]="categoryFilter === cat.label ? cat.color : ''"
+        [style.box-shadow]="categoryFilter === cat.label ? '0 0 0 2px ' + cat.color : ''"
+        (click)="categoryFilter = categoryFilter === cat.label ? 'ALL' : cat.label; applyFilter()"
+      >
+        <div
+          class="avatar rounded-circle mx-auto mb-2 d-flex align-items-center justify-content-center text-white"
+          [style.background-color]="cat.color"
+          style="width: 38px; height: 38px; font-size: 1.1rem;"
+        >
+          <i class="bi" [ngClass]="cat.icon"></i>
+        </div>
+        <div class="small fw-bold text-main">{{ cat.label }}</div>
+        <div class="text-muted" style="font-size: 0.72rem;">{{ cat.title }}</div>
+        <div class="fw-bold font-mono text-main fs-6 mt-1">
+          ₹{{ getCategoryTotal(cat.label) | number:'1.0-0' }}
+        </div>
+        <div class="small text-muted" style="font-size: 0.72rem;">
+          {{ getCategoryPercentage(cat.label) }}% of bills
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Category Breakdown Progress Bar -->
+  <div class="rcms-card p-3 mb-4">
+    <div class="d-flex justify-content-between align-items-center mb-2">
+      <span class="small fw-bold text-muted text-uppercase">Room Cost Distribution</span>
+      <span class="small text-muted font-mono">Total Bills: ₹{{ getTotalMonthlyExpense() | number:'1.0-0' }}</span>
+    </div>
+    <div class="progress" style="height: 12px; border-radius: 6px; overflow: hidden;">
+      <div
+        *ngFor="let cat of categories"
+        class="progress-bar"
+        role="progressbar"
+        [style.width.%]="getCategoryPercentage(cat.label)"
+        [style.background-color]="cat.color"
+        [title]="cat.label + ': ' + getCategoryPercentage(cat.label) + '%'"
+      ></div>
+    </div>
+    <div class="d-flex flex-wrap gap-3 mt-2 small text-muted">
+      <span *ngFor="let cat of categories" class="d-flex align-items-center gap-1">
+        <span class="d-inline-block rounded-circle" [style.background-color]="cat.color" style="width: 8px; height: 8px;"></span>
+        {{ cat.label }}: ₹{{ getCategoryTotal(cat.label) | number:'1.0-0' }}
+      </span>
+    </div>
+  </div>
+
+  <!-- Search & Filter Controls -->
+  <div class="rcms-card p-3 mb-4">
+    <div class="row g-2 align-items-center">
+      <div class="col-md-6">
+        <div class="input-group">
+          <span class="input-group-text bg-transparent border-end-0 text-muted">
+            <i class="bi bi-search"></i>
+          </span>
+          <input
+            type="text"
+            class="form-control rcms-input border-start-0 ps-0"
+            placeholder="Search bill description, who paid upfront..."
+            [(ngModel)]="searchTerm"
+            (ngModelChange)="applyFilter()"
+            id="input-search-expense"
+          />
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="d-flex align-items-center gap-2">
+          <label class="text-muted small fw-semibold text-nowrap mb-0">Filter Category:</label>
+          <select
+            class="form-select rcms-select"
+            [(ngModel)]="categoryFilter"
+            (ngModelChange)="applyFilter()"
+            id="select-expense-cat-filter"
+          >
+            <option value="ALL">All Bills</option>
+            <option *ngFor="let cat of categories" [value]="cat.label">{{ cat.label }} ({{ cat.title }})</option>
+          </select>
+        </div>
+      </div>
+      <div class="col-md-2 text-md-end">
+        <span class="badge bg-secondary-subtle text-secondary py-2 px-3 rounded-pill">
+          <strong>{{ filteredExpenses.length }}</strong> bills logged
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Expenses Table -->
+  <div class="rcms-table-container mb-4">
+    <table class="rcms-table" id="table-expenses">
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th>Room</th>
+          <th>Bill / Item Description</th>
+          <th>Date</th>
+          <th>Paid Upfront By</th>
+          <th>Amount</th>
+          <th>Bill Ref</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let exp of filteredExpenses">
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <span
+                class="badge p-2 rounded-circle text-white"
+                [style.background-color]="getCategoryMeta(exp.category).color"
+              >
+                <i class="bi" [ngClass]="getCategoryMeta(exp.category).icon"></i>
+              </span>
+              <span class="fw-semibold">{{ exp.category }}</span>
+            </div>
+          </td>
+          <td>
+            <span class="badge bg-light text-primary border font-mono">
+              {{ exp.roomNo }}
+            </span>
+          </td>
+          <td>
+            <div class="fw-bold text-main">{{ exp.title }}</div>
+            <div *ngIf="exp.notes" class="small text-muted">{{ exp.notes }}</div>
+          </td>
+          <td>
+            <span class="small text-muted font-mono">
+              <i class="bi bi-calendar3 me-1"></i>{{ exp.billDate }}
+            </span>
+          </td>
+          <td>
+            <span class="badge bg-secondary-subtle text-secondary">
+              <i class="bi bi-person-fill me-1"></i>{{ exp.paidBy }}
+            </span>
+          </td>
+          <td>
+            <span class="fw-bold font-mono fs-6 text-primary">
+              ₹{{ exp.amount | number:'1.2-2' }}
+            </span>
+          </td>
+          <td>
+            <span *ngIf="exp.receiptNo" class="badge bg-light text-muted border font-mono small">
+              {{ exp.receiptNo }}
+            </span>
+            <span *ngIf="!exp.receiptNo" class="text-muted small">-</span>
+          </td>
+          <td class="text-end">
+            <div class="btn-group btn-group-sm">
+              <button
+                class="btn btn-outline-primary"
+                (click)="openEditModal(exp)"
+                title="Edit Bill"
+              >
+                <i class="bi bi-pencil-square"></i>
+              </button>
+              <button
+                class="btn btn-outline-danger"
+                (click)="deleteExpense(exp)"
+                title="Delete Bill"
+              >
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+
+        <tr *ngIf="filteredExpenses.length === 0">
+          <td colspan="8" class="text-center py-5 text-muted">
+            <i class="bi bi-receipt display-4 d-block mb-3 opacity-50"></i>
+            <h5>No Bills Logged for this Month</h5>
+            <p class="small mb-3">Add rent, EB, water cans, Wi-Fi or maid expenses for {{ selectedMonth }}.</p>
+            <div class="d-flex justify-content-center gap-2">
+              <button class="btn btn-sm btn-outline-primary" (click)="autoPopulateBaseRent()">
+                <i class="bi bi-magic"></i> Auto-Add Landlord Rent
+              </button>
+              <button class="btn btn-sm btn-rcms-primary" (click)="openAddModal()">
+                <i class="bi bi-plus"></i> Add New Bill / Item
+              </button>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Add / Edit Expense Modal -->
+  <div *ngIf="isModalOpen" class="rcms-modal-backdrop" (click)="closeModal()">
+    <div class="rcms-modal-content" (click)="$event.stopPropagation()">
+      <div class="p-4 border-bottom d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold">
+          <i class="bi" [ngClass]="isEditMode ? 'bi-pencil-square text-primary' : 'bi-plus-circle text-warning'"></i>
+          {{ isEditMode ? 'Edit Bachelor Room Bill' : 'Add Bachelor Room Expense' }}
+        </h5>
+        <button type="button" class="btn-close" (click)="closeModal()"></button>
+      </div>
+
+      <div class="p-4">
+        <form (ngSubmit)="saveExpense()">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Bachelor Room *</label>
+              <select class="form-select rcms-select" [(ngModel)]="expenseForm.roomNo" name="expRoom" required>
+                <option *ngFor="let r of rooms" [value]="r.roomNo">
+                  {{ r.roomNo }} - {{ r.roomName }}
+                </option>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Category *</label>
+              <select class="form-select rcms-select" [(ngModel)]="expenseForm.category" name="expCat" required>
+                <option *ngFor="let cat of categories" [value]="cat.label">
+                  {{ cat.label }} ({{ cat.title }})
+                </option>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Billing Month *</label>
+              <input type="month" class="form-control rcms-input" [(ngModel)]="expenseForm.month" name="expMonth" required />
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Bill Date *</label>
+              <input type="date" class="form-control rcms-input" [(ngModel)]="expenseForm.billDate" name="expDate" required />
+            </div>
+
+            <div class="col-12">
+              <label class="form-label small fw-bold">Bill / Item Description *</label>
+              <input
+                type="text"
+                class="form-control rcms-input"
+                placeholder="e.g. EB Bill Units: 240, 20L Water Cans (4 cans), Wi-Fi Airtel Fiber"
+                [(ngModel)]="expenseForm.title"
+                name="expTitle"
+                required
+              />
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Amount (₹) *</label>
+              <div class="input-group">
+                <span class="input-group-text bg-light">₹</span>
+                <input
+                  type="number"
+                  class="form-control rcms-input font-mono fw-bold fs-5"
+                  min="1"
+                  step="1"
+                  placeholder="0.00"
+                  [(ngModel)]="expenseForm.amount"
+                  name="expAmount"
+                  required
+                />
+              </div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Paid Upfront By</label>
+              <input
+                type="text"
+                class="form-control rcms-input"
+                placeholder="e.g. Siva, Kumar, Room Pool"
+                [(ngModel)]="expenseForm.paidBy"
+                name="expPaidBy"
+              />
+              <div class="form-text small">Who paid the bill amount from his pocket.</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Bill / Receipt Ref No</label>
+              <input
+                type="text"
+                class="form-control rcms-input font-mono"
+                placeholder="e.g. EB-618, AIRTEL-491"
+                [(ngModel)]="expenseForm.receiptNo"
+                name="expReceipt"
+              />
+            </div>
+
+            <div class="col-12">
+              <label class="form-label small fw-bold">Notes</label>
+              <textarea
+                class="form-control rcms-input"
+                rows="2"
+                placeholder="Any special remarks..."
+                [(ngModel)]="expenseForm.notes"
+                name="expNotes"
+              ></textarea>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+            <button type="button" class="btn btn-rcms-secondary" (click)="closeModal()">
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-rcms-primary">
+              <i class="bi bi-save"></i> {{ isEditMode ? 'Update Bill' : 'Save Room Expense' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

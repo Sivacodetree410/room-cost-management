@@ -1,0 +1,275 @@
+<div class="dashboard-view">
+  <!-- Welcome Banner for Bachelor Boys Sharing -->
+  <div class="welcome-banner p-4 rounded-4 mb-4 text-white shadow-sm position-relative overflow-hidden">
+    <div class="row align-items-center position-relative z-1">
+      <div class="col-lg-8">
+        <div class="badge bg-white text-primary fw-bold mb-2 px-3 py-1">
+          <i class="bi bi-people-fill me-1"></i> Bachelor Boys Room Sharing & Expense Manager
+        </div>
+        <h1 class="display-6 fw-bold mb-2">Bachelor Room Cost & Rent Split Portal</h1>
+        <p class="mb-3 opacity-90">
+          Tailored specifically for bachelor boys sharing a room or flat. Track room rent, electricity, drinking water cans, Wi-Fi broadband, maid charges, and split costs fairly by the exact number of days each roommate stayed.
+        </p>
+        <div class="d-flex flex-wrap gap-2">
+          <button class="btn btn-light text-primary fw-bold" (click)="navigateTo('split')">
+            <i class="bi bi-pie-chart-fill me-1"></i> View Dynamic Prorated Split
+          </button>
+          <button class="btn btn-outline-light" (click)="navigateTo('allocations')">
+            <i class="bi bi-person-plus-fill me-1"></i> Manage Roommates
+          </button>
+          <button class="btn btn-outline-light" (click)="navigateTo('payments')">
+            <i class="bi bi-wallet2 me-1"></i> Collect Dues via UPI
+          </button>
+        </div>
+      </div>
+      <div class="col-lg-4 text-lg-end mt-3 mt-lg-0">
+        <button class="btn btn-sm btn-outline-light opacity-75" (click)="resetData()">
+          <i class="bi bi-arrow-counterclockwise me-1"></i> Reset Roommate Sample Data
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div *ngIf="toastMessage" class="alert mb-4 alert-dismissible fade show"
+       [ngClass]="toastType === 'success' ? 'alert-success border-success' : 'alert-danger border-danger'">
+    <i class="bi" [ngClass]="toastType === 'success' ? 'bi-check-circle-fill me-2' : 'bi-exclamation-triangle-fill me-2'"></i>
+    {{ toastMessage }}
+    <button type="button" class="btn-close" (click)="toastMessage = null"></button>
+  </div>
+
+  <!-- 4 Primary KPI Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+      <div class="stat-card cursor-pointer" (click)="navigateTo('rooms')">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-muted small fw-semibold text-uppercase">1. Bachelor Room</div>
+            <div class="stat-value font-mono">{{ rooms[0]?.roomNo || 'Room 101' }}</div>
+          </div>
+          <div class="stat-icon bg-primary-subtle text-primary">
+            <i class="bi bi-door-open-fill"></i>
+          </div>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-3 small text-muted">
+          <span>Capacity: {{ getTotalCapacity() }} cots/beds</span>
+          <span class="text-primary fw-semibold">Master &rarr;</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-6 col-lg-3">
+      <div class="stat-card cursor-pointer" (click)="navigateTo('allocations')">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-muted small fw-semibold text-uppercase">2. Bachelor Boys</div>
+            <div class="stat-value text-success font-mono">{{ getActiveMembersCount() }} Roommates</div>
+          </div>
+          <div class="stat-icon bg-success-subtle text-success">
+            <i class="bi bi-people-fill"></i>
+          </div>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-3 small text-muted">
+          <span>{{ getVacantBeds() }} cot space available</span>
+          <span class="text-success fw-semibold">Roommates &rarr;</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-6 col-lg-3">
+      <div class="stat-card cursor-pointer" (click)="navigateTo('expenses')">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-muted small fw-semibold text-uppercase">3. Monthly Bills & Rent</div>
+            <div class="stat-value text-warning font-mono">
+              ₹{{ getTotalCurrentMonthExpenses() | number:'1.0-0' }}
+            </div>
+          </div>
+          <div class="stat-icon bg-warning-subtle text-warning">
+            <i class="bi bi-receipt"></i>
+          </div>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-3 small text-muted">
+          <span>June 2026 Room Bills</span>
+          <span class="text-warning fw-semibold">Entries &rarr;</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-6 col-lg-3">
+      <div class="stat-card cursor-pointer" (click)="navigateTo('payments')">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-muted small fw-semibold text-uppercase">5. Roommate Dues</div>
+            <div class="stat-value text-danger font-mono">
+              ₹{{ getTotalPendingDues() | number:'1.0-0' }}
+            </div>
+          </div>
+          <div class="stat-icon bg-danger-subtle text-danger">
+            <i class="bi bi-wallet2"></i>
+          </div>
+        </div>
+        <div class="d-flex justify-content-between align-items-center mt-3 small text-muted">
+          <span>Pending UPI settlements</span>
+          <span class="text-danger fw-semibold">Collect &rarr;</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dynamic Cost Split Highlight for Room 101 (Prompt Demonstration) -->
+  <div class="rcms-card p-4 mb-4 border-start border-4 border-success">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+      <div>
+        <span class="badge bg-success-subtle text-success fw-bold px-3 py-1 mb-1">
+          <i class="bi bi-lightning-charge-fill me-1"></i> Bachelor Room Sharing Demonstration (June 2026)
+        </span>
+        <h4 class="fw-bold mb-0">Dynamic Prorated Cost Split for Room 101</h4>
+        <div class="text-muted small">
+          Active roommate occupancy calculation: Siva (30 days), Kumar (26 days), and Rahul (11 days before vacating).
+        </div>
+      </div>
+      <button class="btn btn-sm btn-outline-success" (click)="navigateTo('split')">
+        Open Full Calculator &rarr;
+      </button>
+    </div>
+
+    <div class="row g-3 mb-3" *ngIf="r101Split">
+      <div class="col-md-3">
+        <div class="p-3 bg-muted rounded-3 text-center">
+          <div class="small text-muted fw-semibold">Total Room Expenses</div>
+          <div class="fw-bold font-mono fs-4 text-primary">₹{{ r101Split.totalExpense | number:'1.0-0' }}</div>
+          <div class="small text-muted">Rent + EB + Water + Wi-Fi + Maid + Items</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="p-3 bg-muted rounded-3 text-center">
+          <div class="small text-muted fw-semibold">Bachelor Roommates</div>
+          <div class="fw-bold font-mono fs-4 text-info">{{ r101Split.activeMembersCount }} Boys</div>
+          <div class="small text-muted">Siva, Kumar, Rahul</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="p-3 bg-muted rounded-3 text-center">
+          <div class="small text-muted fw-semibold">Total Stay Days</div>
+          <div class="fw-bold font-mono fs-4 text-warning">{{ r101Split.totalOccupiedDays }} Days</div>
+          <div class="small text-muted">30 + 26 + 11 days stayed</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div class="p-3 bg-muted rounded-3 text-center">
+          <div class="small text-muted fw-semibold">Per Day Room Rate</div>
+          <div class="fw-bold font-mono fs-4 text-success">₹{{ r101Split.dayRate | number:'1.2-2' }}</div>
+          <div class="small text-muted">₹15,000 / 67 days</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Roommate Breakdown Cards -->
+    <div class="row g-3" *ngIf="r101Split">
+      <div *ngFor="let member of r101Split.memberSplits" class="col-md-4">
+        <div class="card p-3 border h-100 bg-surface">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div>
+              <span class="fw-bold fs-6">{{ member.memberName }}</span>
+              <span *ngIf="member.memberName === 'Siva'" class="badge bg-primary-subtle text-primary ms-1 small">Admin</span>
+            </div>
+            <span class="badge-pill-custom" [ngClass]="member.status === 'Active' ? 'badge-active' : 'badge-vacated'">
+              {{ member.status }}
+            </span>
+          </div>
+          <div class="small text-muted mb-2 font-mono">
+            Stay: {{ member.joinDate }} &rarr; {{ member.leaveDate || 'Ongoing' }}
+            <br>
+            <strong>{{ member.daysOccupiedInMonth }} days stayed in room</strong>
+          </div>
+          <div class="mt-auto pt-2 border-top d-flex justify-content-between align-items-center">
+            <span class="small text-muted">Prorated Share:</span>
+            <span class="fw-bold font-mono fs-5 text-primary">₹{{ member.calculatedShare | number:'1.2-2' }}</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Lower Section: Bachelor Room Details & Recent Expenses -->
+  <div class="row g-4">
+    <!-- Left: Room Details -->
+    <div class="col-lg-6">
+      <div class="rcms-card p-4 h-100">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="fw-bold mb-0">
+            <i class="bi bi-door-open text-primary me-2"></i> Bachelor Room Profile
+          </h5>
+          <button class="btn btn-sm btn-link text-decoration-none" (click)="navigateTo('rooms')">
+            Manage Room &rarr;
+          </button>
+        </div>
+
+        <div *ngFor="let room of rooms" class="p-3 border rounded-3 bg-surface mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-2">
+            <div>
+              <span class="badge bg-primary font-mono fw-bold fs-6">{{ room.roomNo }}</span>
+              <span class="fw-bold fs-6 ms-2">{{ room.roomName }}</span>
+            </div>
+            <span class="badge-pill-custom badge-available">{{ room.status }}</span>
+          </div>
+          <div class="row g-2 small text-muted mt-2">
+            <div class="col-6">
+              <i class="bi bi-cash me-1 text-primary"></i> Base Room Rent: <strong>₹{{ room.baseRent | number:'1.0-0' }}/mo</strong>
+            </div>
+            <div class="col-6">
+              <i class="bi bi-people me-1 text-info"></i> Roommates: <strong>{{ room.currentMembers }}/{{ room.maxCapacity }} boys</strong>
+            </div>
+            <div class="col-6" *ngIf="room.depositAmount">
+              <i class="bi bi-shield-check me-1 text-success"></i> Advance Deposit: <strong>₹{{ room.depositAmount | number:'1.0-0' }}</strong>
+            </div>
+            <div class="col-6" *ngIf="room.floor">
+              <i class="bi bi-building me-1"></i> Location: <strong>{{ room.floor }}</strong>
+            </div>
+          </div>
+          <div class="d-flex flex-wrap gap-1 mt-3">
+            <span *ngFor="let am of room.amenities?.slice(0, 4)" class="badge bg-light text-secondary border small">
+              {{ am }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Recent Room Expenses -->
+    <div class="col-lg-6">
+      <div class="rcms-card p-4 h-100">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="fw-bold mb-0">
+            <i class="bi bi-receipt text-warning me-2"></i> Recent Shared Room Expenses
+          </h5>
+          <button class="btn btn-sm btn-link text-decoration-none" (click)="navigateTo('expenses')">
+            Add Expense &rarr;
+          </button>
+        </div>
+
+        <div class="list-group list-group-flush">
+          <div *ngFor="let exp of getRecentExpenses()" class="list-group-item px-0 py-3 d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center gap-3">
+              <span class="badge bg-light text-primary border p-2 font-mono">
+                {{ exp.category }}
+              </span>
+              <div>
+                <div class="fw-bold">{{ exp.title }}</div>
+                <div class="small text-muted font-mono">
+                  {{ exp.billDate }} &bull; Paid upfront by <strong>{{ exp.paidBy }}</strong>
+                </div>
+              </div>
+            </div>
+            <div class="text-end">
+              <span class="fw-bold font-mono fs-6 text-primary">
+                ₹{{ exp.amount | number:'1.0-0' }}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

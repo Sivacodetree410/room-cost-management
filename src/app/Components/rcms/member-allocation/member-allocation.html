@@ -1,0 +1,509 @@
+<div class="member-allocation-view">
+  <!-- Page Header -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3">
+    <div class="d-flex align-items-center gap-2">
+      <div class="module-icon bg-info text-white">
+        <i class="bi bi-people-fill"></i>
+      </div>
+      <div>
+        <h2 class="mb-1">2. Roommate Allocation (Bachelor Boys)</h2>
+        <p class="text-muted mb-0 small">
+          Bachelor roommates can join or leave anytime. Manage move-in dates, check-outs, and cot allocation.
+        </p>
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-rcms-primary" (click)="openAllocateModal()" id="btn-allocate-member">
+        <i class="bi bi-person-plus-fill"></i> Add Bachelor Roommate
+      </button>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div *ngIf="toastMessage" class="alert mb-4 alert-dismissible fade show"
+       [ngClass]="toastType === 'success' ? 'alert-success border-success' : 'alert-danger border-danger'">
+    <i class="bi" [ngClass]="toastType === 'success' ? 'bi-check-circle-fill me-2' : 'bi-exclamation-triangle-fill me-2'"></i>
+    {{ toastMessage }}
+    <button type="button" class="btn-close" (click)="toastMessage = null"></button>
+  </div>
+
+  <!-- KPI Badges -->
+  <div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-muted small fw-semibold text-uppercase">Total Roommates</div>
+            <div class="stat-value font-mono">{{ members.length }}</div>
+          </div>
+          <div class="stat-icon bg-primary-subtle text-primary">
+            <i class="bi bi-person-badge"></i>
+          </div>
+        </div>
+        <div class="text-muted small mt-2">Active & past boys</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-muted small fw-semibold text-uppercase">Active in Room</div>
+            <div class="stat-value text-success font-mono">{{ getActiveCount() }}</div>
+          </div>
+          <div class="stat-icon bg-success-subtle text-success">
+            <i class="bi bi-person-check-fill"></i>
+          </div>
+        </div>
+        <div class="text-muted small mt-2">Currently staying</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-muted small fw-semibold text-uppercase">Vacated / Shifted</div>
+            <div class="stat-value text-warning font-mono">{{ getVacatedCount() }}</div>
+          </div>
+          <div class="stat-icon bg-warning-subtle text-warning">
+            <i class="bi bi-box-arrow-right"></i>
+          </div>
+        </div>
+        <div class="text-muted small mt-2">Past roommates</div>
+      </div>
+    </div>
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-muted small fw-semibold text-uppercase">Sharing Room</div>
+            <div class="stat-value text-info font-mono">{{ rooms[0]?.roomNo || 'Room 101' }}</div>
+          </div>
+          <div class="stat-icon bg-info-subtle text-info">
+            <i class="bi bi-door-open"></i>
+          </div>
+        </div>
+        <div class="text-muted small mt-2">Cot capacity: {{ rooms[0]?.maxCapacity || 3 }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search & Filter Controls -->
+  <div class="rcms-card p-3 mb-4">
+    <div class="row g-2 align-items-center">
+      <div class="col-md-5">
+        <div class="input-group">
+          <span class="input-group-text bg-transparent border-end-0 text-muted">
+            <i class="bi bi-search"></i>
+          </span>
+          <input
+            type="text"
+            class="form-control rcms-input border-start-0 ps-0"
+            placeholder="Search roommate name, hometown, company..."
+            [(ngModel)]="searchTerm"
+            (ngModelChange)="applyFilter()"
+            id="input-search-member"
+          />
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="d-flex align-items-center gap-2">
+          <label class="text-muted small fw-semibold text-nowrap mb-0">Status:</label>
+          <select
+            class="form-select rcms-select"
+            [(ngModel)]="statusFilter"
+            (ngModelChange)="applyFilter()"
+            id="select-member-status-filter"
+          >
+            <option value="ALL">All Roommates</option>
+            <option value="Active">Active Only</option>
+            <option value="Vacated">Vacated Only</option>
+          </select>
+        </div>
+      </div>
+      <div class="col-md-3 text-md-end">
+        <span class="badge bg-secondary-subtle text-secondary py-2 px-3 rounded-pill">
+          <strong>{{ filteredMembers.length }}</strong> bachelor boys
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Roommates Allocation Table matching prompt specification -->
+  <div class="rcms-table-container mb-4">
+    <table class="rcms-table" id="table-member-allocations">
+      <thead>
+        <tr>
+          <th>Member</th>
+          <th>Room</th>
+          <th>Join Date</th>
+          <th>Leave Date</th>
+          <th>Stay Duration</th>
+          <th>Status</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let member of filteredMembers">
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div
+                class="avatar fw-bold rounded-circle d-flex align-items-center justify-content-center text-white"
+                [ngClass]="member.status === 'Active' ? 'bg-primary' : 'bg-secondary'"
+                style="width: 38px; height: 38px; font-size: 0.95rem;"
+              >
+                {{ member.memberName.charAt(0) }}
+              </div>
+              <div>
+                <div class="fw-bold text-main">
+                  {{ member.memberName }}
+                  <span *ngIf="member.memberName === 'Siva'" class="badge bg-primary-subtle text-primary ms-1 small">Room Admin</span>
+                </div>
+                <div class="small text-muted font-mono" style="font-size: 0.8rem;">
+                  {{ member.phone }} &bull; UPI: <strong>{{ member.upiId || 'N/A' }}</strong>
+                </div>
+                <div class="small text-muted" *ngIf="member.collegeOrCompany">
+                  <i class="bi bi-briefcase me-1"></i>{{ member.collegeOrCompany }}
+                </div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <span class="badge bg-primary-subtle text-primary fw-bold font-mono px-2 py-1">
+              {{ member.roomNo }}
+            </span>
+          </td>
+          <td>
+            <div class="fw-semibold">
+              <i class="bi bi-calendar-check text-success me-1"></i>
+              {{ member.joinDate }}
+            </div>
+          </td>
+          <td>
+            <div *ngIf="member.leaveDate" class="fw-semibold text-danger">
+              <i class="bi bi-calendar-x text-danger me-1"></i>
+              {{ member.leaveDate }}
+            </div>
+            <span *ngIf="!member.leaveDate" class="text-muted font-mono fst-italic">
+              - (Active)
+            </span>
+          </td>
+          <td>
+            <span class="badge bg-light text-secondary border">
+              {{ calculateDurationDays(member.joinDate, member.leaveDate) }} days
+            </span>
+          </td>
+          <td>
+            <span
+              class="badge-pill-custom"
+              [ngClass]="member.status === 'Active' ? 'badge-active' : 'badge-vacated'"
+            >
+              <i
+                class="bi"
+                [ngClass]="member.status === 'Active' ? 'bi-check-circle-fill' : 'bi-dash-circle-fill'"
+              ></i>
+              {{ member.status }}
+            </span>
+          </td>
+          <td class="text-end">
+            <div class="btn-group btn-group-sm">
+              <button
+                *ngIf="member.status === 'Active'"
+                class="btn btn-outline-warning text-dark"
+                (click)="openVacateModal(member)"
+                title="Vacate Roommate"
+              >
+                <i class="bi bi-box-arrow-right"></i> Vacate
+              </button>
+              <button
+                class="btn btn-outline-primary"
+                (click)="openEditModal(member)"
+                title="Edit Details"
+              >
+                <i class="bi bi-pencil-square"></i>
+              </button>
+              <button
+                class="btn btn-outline-danger"
+                (click)="deleteAllocation(member)"
+                title="Remove Record"
+              >
+                <i class="bi bi-trash"></i>
+              </button>
+            </div>
+          </td>
+        </tr>
+
+        <tr *ngIf="filteredMembers.length === 0">
+          <td colspan="7" class="text-center py-5 text-muted">
+            <i class="bi bi-people display-4 d-block mb-3 opacity-50"></i>
+            <h5>No Roommates Found</h5>
+            <p class="small mb-3">Add bachelor roommates sharing Room 101.</p>
+            <button class="btn btn-sm btn-rcms-primary" (click)="openAllocateModal()">
+              <i class="bi bi-person-plus"></i> Add Bachelor Roommate
+            </button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Allocate Roommate Modal -->
+  <div *ngIf="isAllocateModalOpen" class="rcms-modal-backdrop" (click)="closeAllocateModal()">
+    <div class="rcms-modal-content" (click)="$event.stopPropagation()">
+      <div class="p-4 border-bottom d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold">
+          <i class="bi bi-person-plus-fill text-primary me-2"></i>
+          Allocate Cot to Bachelor Roommate
+        </h5>
+        <button type="button" class="btn-close" (click)="closeAllocateModal()"></button>
+      </div>
+
+      <div class="p-4">
+        <form (ngSubmit)="submitAllocation()">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Roommate Name *</label>
+              <input
+                type="text"
+                class="form-control rcms-input"
+                placeholder="e.g. Siva, Kumar, Rahul"
+                [(ngModel)]="allocateForm.memberName"
+                name="memberName"
+                required
+              />
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Bachelor Room *</label>
+              <select
+                class="form-select rcms-select"
+                [(ngModel)]="allocateForm.roomNo"
+                name="roomNo"
+                required
+              >
+                <option *ngFor="let r of rooms" [value]="r.roomNo" [disabled]="r.status === 'Full'">
+                  {{ r.roomNo }} - {{ r.roomName }} {{ getRoomCapacityInfo(r.roomNo) }}
+                </option>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Joining Date *</label>
+              <input
+                type="date"
+                class="form-control rcms-input"
+                [(ngModel)]="allocateForm.joinDate"
+                name="joinDate"
+                required
+              />
+              <div class="form-text small">Used for prorated room expense calculation.</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Phone Number</label>
+              <input
+                type="text"
+                class="form-control rcms-input"
+                placeholder="+91 98765 43210"
+                [(ngModel)]="allocateForm.phone"
+                name="phone"
+              />
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">UPI ID (For Rent Sharing)</label>
+              <input
+                type="text"
+                class="form-control rcms-input font-mono"
+                placeholder="e.g. roommate@oksbi / paytm"
+                [(ngModel)]="allocateForm.upiId"
+                name="upiId"
+              />
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Company / College</label>
+              <input
+                type="text"
+                class="form-control rcms-input"
+                placeholder="e.g. TCS, Cognizant, College..."
+                [(ngModel)]="allocateForm.collegeOrCompany"
+                name="collegeOrCompany"
+              />
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Hometown (Native)</label>
+              <input
+                type="text"
+                class="form-control rcms-input"
+                placeholder="e.g. Madurai, Trichy"
+                [(ngModel)]="allocateForm.hometown"
+                name="hometown"
+              />
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Deposit Contribution (₹)</label>
+              <div class="input-group">
+                <span class="input-group-text bg-light">₹</span>
+                <input
+                  type="number"
+                  class="form-control rcms-input"
+                  placeholder="0"
+                  [(ngModel)]="allocateForm.depositPaid"
+                  name="depositPaid"
+                />
+              </div>
+            </div>
+
+            <div class="col-12">
+              <label class="form-label small fw-bold">Notes</label>
+              <textarea
+                class="form-control rcms-input"
+                rows="2"
+                placeholder="Any special remarks or furniture assigned..."
+                [(ngModel)]="allocateForm.notes"
+                name="notes"
+              ></textarea>
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+            <button type="button" class="btn btn-rcms-secondary" (click)="closeAllocateModal()">
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-rcms-primary">
+              <i class="bi bi-check-circle"></i> Confirm Roommate Allocation
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Vacate Roommate Modal -->
+  <div *ngIf="isVacateModalOpen" class="rcms-modal-backdrop" (click)="closeVacateModal()">
+    <div class="rcms-modal-content" (click)="$event.stopPropagation()">
+      <div class="p-4 border-bottom d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold text-warning-emphasis">
+          <i class="bi bi-box-arrow-right text-warning me-2"></i>
+          Vacate Roommate: {{ selectedMember?.memberName }}
+        </h5>
+        <button type="button" class="btn-close" (click)="closeVacateModal()"></button>
+      </div>
+
+      <div class="p-4">
+        <div class="alert alert-warning d-flex align-items-center mb-3">
+          <i class="bi bi-exclamation-triangle-fill fs-4 me-3"></i>
+          <div>
+            Marking <strong>{{ selectedMember?.memberName }}</strong> as Vacated will record his leave date and calculate his prorated share up to that day. The cot in <strong>{{ selectedMember?.roomNo }}</strong> will be marked vacant.
+          </div>
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Joining Date</label>
+          <input
+            type="text"
+            class="form-control rcms-input bg-light"
+            [value]="selectedMember?.joinDate"
+            disabled
+          />
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Vacating Date (Leaving Date) *</label>
+          <input
+            type="date"
+            class="form-control rcms-input"
+            [(ngModel)]="vacateLeaveDate"
+            name="vacateLeaveDate"
+            required
+          />
+          <div class="form-text small">His monthly cost split will be prorated strictly up to this day.</div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+          <button type="button" class="btn btn-rcms-secondary" (click)="closeVacateModal()">
+            Cancel
+          </button>
+          <button type="button" class="btn btn-warning text-dark fw-bold" (click)="confirmVacate()">
+            <i class="bi bi-check2-circle"></i> Confirm Vacate
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Roommate Modal -->
+  <div *ngIf="isEditModalOpen" class="rcms-modal-backdrop" (click)="closeEditModal()">
+    <div class="rcms-modal-content" (click)="$event.stopPropagation()">
+      <div class="p-4 border-bottom d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold">
+          <i class="bi bi-pencil-square text-primary me-2"></i>
+          Edit Roommate Details: {{ editForm.memberName }}
+        </h5>
+        <button type="button" class="btn-close" (click)="closeEditModal()"></button>
+      </div>
+
+      <div class="p-4">
+        <form (ngSubmit)="saveEdit()">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Roommate Name</label>
+              <input type="text" class="form-control rcms-input" [(ngModel)]="editForm.memberName" name="editName" required />
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Room</label>
+              <select class="form-select rcms-select" [(ngModel)]="editForm.roomNo" name="editRoom">
+                <option *ngFor="let r of rooms" [value]="r.roomNo">{{ r.roomNo }}</option>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Join Date</label>
+              <input type="date" class="form-control rcms-input" [(ngModel)]="editForm.joinDate" name="editJoin" required />
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Leave Date</label>
+              <input type="date" class="form-control rcms-input" [(ngModel)]="editForm.leaveDate" name="editLeave" />
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Status</label>
+              <select class="form-select rcms-select" [(ngModel)]="editForm.status" name="editStatus">
+                <option value="Active">Active</option>
+                <option value="Vacated">Vacated</option>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Phone</label>
+              <input type="text" class="form-control rcms-input" [(ngModel)]="editForm.phone" name="editPhone" />
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">UPI ID</label>
+              <input type="text" class="form-control rcms-input font-mono" [(ngModel)]="editForm.upiId" name="editUpi" />
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Company / College</label>
+              <input type="text" class="form-control rcms-input" [(ngModel)]="editForm.collegeOrCompany" name="editWork" />
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+            <button type="button" class="btn btn-rcms-secondary" (click)="closeEditModal()">
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-rcms-primary">
+              <i class="bi bi-save"></i> Save Changes
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

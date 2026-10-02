@@ -1,0 +1,25 @@
+.reports-view {
+  animation: fadeIn 0.2s ease-out;
+}
+
+.module-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  box-shadow: 0 4px 10px rgba(139, 92, 246, 0.25);
+}
+
+.nav-pills .nav-link {
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.nav-pills .nav-link:hover {
+  background: var(--bg-muted);
+  color: var(--text-main);
+}

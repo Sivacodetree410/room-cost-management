@@ -1,0 +1,111 @@
+<div class="register-wrapper">
+
+    <div class="register-card">
+
+        <h2>Create Account</h2>
+        <p class="text-muted mb-4">Register to continue</p>
+
+        <form autocomplete="off" #RCMSRegistrationsForm="ngForm">
+
+            <div class="row">
+
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Username</label>
+                    <input type="text" class="form-control" [(ngModel)]="registration.usernamereg"
+                        #ngusernamereg="ngModel" placeholder="Username" id="username" name="username" required
+                        [ngClass]="{'is-invalid': ngusernamereg.errors &&(ngusernamereg.dirty || ngusernamereg.touched) }">
+
+                    <div *ngIf="ngusernamereg.invalid && (ngusernamereg.dirty || ngusernamereg.touched)"
+                        class="invalid-feedback">
+                        <div *ngIf="ngusernamereg.hasError('required')">
+                            Username is required
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Full Name</label>
+                    <input type="text" class="form-control" [(ngModel)]="registration.fullnamereg"
+                        #ngfullnamereg="ngModel" placeholder="Full Name" id="fullname" name="fullname" required
+                        [ngClass]="{'is-invalid': ngfullnamereg.errors && (ngfullnamereg.dirty || ngfullnamereg.touched) }">
+
+                    <div *ngIf="ngfullnamereg.invalid && (ngfullnamereg.dirty || ngfullnamereg.touched)"
+                        class="invalid-feedback">
+                        <div *ngIf="ngfullnamereg.hasError('required')">
+                            Full Name is required
+                        </div>
+                    </div>
+                </div>
+
+                <div class=" col-md-6 mb-3">
+                    <label class="form-label">E-mail</label>
+                    <input type="email" class="form-control" [(ngModel)]="registration.emailreg" #ngemailreg="ngModel"
+                        placeholder="Email" id="email" name="email" required
+                        [ngClass]="{'is-invalid': ngemailreg.errors && (ngemailreg.dirty || ngemailreg.touched) }">
+
+                    <div *ngIf="ngemailreg.invalid && (ngemailreg.dirty || ngemailreg.touched)"
+                        class="invalid-feedback">
+                        <div *ngIf="ngemailreg.hasError('required')">
+                            E-mail is required
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Mobile Number</label>
+                    <input type="text" maxlength="10" class="form-control" [(ngModel)]="registration.mobilenoreg" #ngmobilenoreg="ngModel" required
+                        placeholder="Mobile Number" id="mobilenumber" name="mobilenumber"
+                        [ngClass]="{'is-invalid': ngmobilenoreg.errors && (ngmobilenoreg.dirty || ngmobilenoreg.touched) }">
+
+                    <div *ngIf="ngmobilenoreg.invalid && (ngmobilenoreg.dirty || ngmobilenoreg.touched)"
+                        class="invalid-feedback">
+                        <div *ngIf="ngmobilenoreg.hasError('required')">
+                            Mobile Number is required
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Password</label>
+                    <input type="text" class="form-control" [(ngModel)]="registration.passwordreg" #ngpasswordreg="ngModel" required
+                        placeholder="Password" id="password" name="password"
+                        [ngClass]="{'is-invalid': ngpasswordreg.errors && (ngpasswordreg.dirty || ngpasswordreg.touched) }">
+                    
+                    <div *ngIf="ngpasswordreg.invalid && (ngpasswordreg.dirty || ngpasswordreg.touched)"
+                        class="invalid-feedback">
+                        <div *ngIf="ngpasswordreg.hasError('required')">
+                            Password is required
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-4">
+                    <label class="form-label">Confirm Password</label>
+                    <input type="text" class="form-control" [(ngModel)]="registration.confirmpwdreg" #ngconfirmpwdreg="ngModel" required
+                        placeholder="Confirm Password" id="confirmpwd" name="confiempwd"
+                        [ngClass]="{'is-invalid': ngconfirmpwdreg.errors && (ngconfirmpwdreg.dirty || ngconfirmpwdreg.touched) }">
+
+                    <div *ngIf="ngconfirmpwdreg.invalid && (ngconfirmpwdreg.dirty || ngconfirmpwdreg.touched)"
+                        class="invalid-feedback">
+                        <div *ngIf="ngconfirmpwdreg.hasError('required')">
+                            Confirm Password is required
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <button class="btn btn-info w-100" [disabled]="RCMSRegistrationsForm.invalid" (click)="RegistrationsFormsubmit()">
+                Register
+            </button>
+
+            <div class="text-center mt-3">
+                Already have an account?
+                <a routerLink="/RCMSLogin" class="login-link">Login</a>
+            </div>
+
+        </form>
+
+    </div>
+
+</div>

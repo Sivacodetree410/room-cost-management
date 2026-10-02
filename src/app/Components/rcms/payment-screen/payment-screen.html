@@ -1,0 +1,529 @@
+<div class="payment-screen-view">
+  <!-- Page Header -->
+  <div class="d-flex flex-wrap justify-content-between align-items-center mb-4 gap-3 no-print">
+    <div class="d-flex align-items-center gap-2">
+      <div class="module-icon bg-indigo text-white" style="background-color: var(--primary);">
+        <i class="bi bi-credit-card-2-front-fill"></i>
+      </div>
+      <div>
+        <h2 class="mb-1">5. Roommate Payments & UPI Settlement</h2>
+        <p class="text-muted mb-0 small">
+          Track calculated room shares, payments received via Google Pay / PhonePe, and settle room dues.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div *ngIf="toastMessage" class="alert mb-4 alert-dismissible fade show no-print"
+       [ngClass]="toastType === 'success' ? 'alert-success border-success' : 'alert-danger border-danger'">
+    <i class="bi" [ngClass]="toastType === 'success' ? 'bi-check-circle-fill me-2' : 'bi-exclamation-triangle-fill me-2'"></i>
+    {{ toastMessage }}
+    <button type="button" class="btn-close" (click)="toastMessage = null"></button>
+  </div>
+
+  <!-- 4 Summary Stat Cards -->
+  <div class="row g-3 mb-4 no-print">
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-muted small fw-semibold text-uppercase">Total Room Bills</div>
+            <div class="stat-value font-mono">
+              ₹{{ getTotalBilled() | number:'1.2-2' }}
+            </div>
+          </div>
+          <div class="stat-icon bg-primary-subtle text-primary">
+            <i class="bi bi-file-earmark-spreadsheet"></i>
+          </div>
+        </div>
+        <div class="text-muted small mt-2">Sum of roommate shares</div>
+      </div>
+    </div>
+
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-muted small fw-semibold text-uppercase">Collected (Paid)</div>
+            <div class="stat-value text-success font-mono">
+              ₹{{ getTotalCollected() | number:'1.2-2' }}
+            </div>
+          </div>
+          <div class="stat-icon bg-success-subtle text-success">
+            <i class="bi bi-wallet2"></i>
+          </div>
+        </div>
+        <div class="text-muted small mt-2">Roommates settled share</div>
+      </div>
+    </div>
+
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-muted small fw-semibold text-uppercase">Pending Dues</div>
+            <div class="stat-value text-danger font-mono">
+              ₹{{ getTotalDue() | number:'1.2-2' }}
+            </div>
+          </div>
+          <div class="stat-icon bg-danger-subtle text-danger">
+            <i class="bi bi-exclamation-circle-fill"></i>
+          </div>
+        </div>
+        <div class="text-muted small mt-2">Yet to be paid by roommates</div>
+      </div>
+    </div>
+
+    <div class="col-6 col-lg-3">
+      <div class="stat-card">
+        <div class="d-flex justify-content-between align-items-start">
+          <div>
+            <div class="text-muted small fw-semibold text-uppercase">Settlement Rate</div>
+            <div class="stat-value text-info font-mono">
+              {{ getCollectionPercentage() }}%
+            </div>
+          </div>
+          <div class="stat-icon bg-info-subtle text-info">
+            <i class="bi bi-pie-chart"></i>
+          </div>
+        </div>
+        <div class="text-muted small mt-2">Room recovery percentage</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters Toolbar -->
+  <div class="rcms-card p-3 mb-4 no-print">
+    <div class="row g-2 align-items-center">
+      <div class="col-md-4">
+        <div class="input-group">
+          <span class="input-group-text bg-transparent border-end-0 text-muted">
+            <i class="bi bi-search"></i>
+          </span>
+          <input
+            type="text"
+            class="form-control rcms-input border-start-0 ps-0"
+            placeholder="Search roommate name..."
+            [(ngModel)]="searchTerm"
+            (ngModelChange)="applyFilter()"
+            id="input-search-payment"
+          />
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="d-flex align-items-center gap-2">
+          <label class="text-muted small fw-semibold text-nowrap mb-0">Billing Month:</label>
+          <input
+            type="month"
+            class="form-control rcms-input"
+            [(ngModel)]="selectedMonth"
+            (ngModelChange)="applyFilter()"
+            id="input-pay-month-filter"
+          />
+        </div>
+      </div>
+
+      <div class="col-md-4">
+        <div class="d-flex align-items-center gap-2">
+          <label class="text-muted small fw-semibold text-nowrap mb-0">Payment Status:</label>
+          <select
+            class="form-select rcms-select"
+            [(ngModel)]="selectedStatus"
+            (ngModelChange)="applyFilter()"
+            id="select-pay-status-filter"
+          >
+            <option value="ALL">All Statuses</option>
+            <option value="Due">Due (Unpaid)</option>
+            <option value="Partial">Partial Paid</option>
+            <option value="Paid">Fully Paid</option>
+          </select>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Payments Table matching prompt requirements -->
+  <div class="rcms-table-container mb-4 no-print">
+    <table class="rcms-table" id="table-payments">
+      <thead>
+        <tr>
+          <th>Member</th>
+          <th>Month</th>
+          <th>Calculated Share</th>
+          <th>Paid</th>
+          <th>Due</th>
+          <th>Status</th>
+          <th class="text-end">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let payment of filteredPayments">
+          <td>
+            <div class="d-flex align-items-center gap-2">
+              <div class="avatar bg-primary text-white fw-bold rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+                {{ payment.memberName.charAt(0) }}
+              </div>
+              <div>
+                <div class="fw-bold text-main">
+                  {{ payment.memberName }}
+                  <span *ngIf="payment.memberName === 'Siva'" class="badge bg-primary-subtle text-primary ms-1 small">Admin</span>
+                </div>
+                <div class="small text-muted font-mono" *ngIf="payment.upiId">
+                  UPI: <strong>{{ payment.upiId }}</strong>
+                </div>
+              </div>
+            </div>
+          </td>
+          <td>
+            <span class="font-mono fw-semibold">
+              {{ payment.month }}
+            </span>
+            <div class="small text-muted">{{ payment.roomNo }}</div>
+          </td>
+          <td>
+            <span class="fw-bold font-mono fs-6 text-primary">
+              ₹{{ payment.calculatedShare | number:'1.2-2' }}
+            </span>
+          </td>
+          <td>
+            <span class="fw-bold font-mono text-success">
+              ₹{{ payment.paid | number:'1.2-2' }}
+            </span>
+          </td>
+          <td>
+            <span
+              class="fw-bold font-mono fs-6"
+              [ngClass]="payment.due > 0 ? 'text-danger' : 'text-muted'"
+            >
+              ₹{{ payment.due | number:'1.2-2' }}
+            </span>
+          </td>
+          <td>
+            <span
+              class="badge-pill-custom"
+              [ngClass]="{
+                'badge-paid': payment.status === 'Paid',
+                'badge-partial': payment.status === 'Partial',
+                'badge-due': payment.status === 'Due'
+              }"
+            >
+              <i
+                class="bi"
+                [ngClass]="{
+                  'bi-check-circle-fill': payment.status === 'Paid',
+                  'bi-clock-fill': payment.status === 'Partial',
+                  'bi-exclamation-circle-fill': payment.status === 'Due'
+                }"
+              ></i>
+              {{ payment.status }}
+            </span>
+          </td>
+          <td class="text-end">
+            <div class="btn-group btn-group-sm">
+              <button
+                *ngIf="payment.due > 0"
+                class="btn btn-outline-info text-dark"
+                (click)="openUpiModal(payment)"
+                title="Pay via UPI QR"
+              >
+                <i class="bi bi-qr-code"></i> UPI
+              </button>
+              <button
+                *ngIf="payment.due > 0"
+                class="btn btn-outline-success"
+                (click)="openRecordModal(payment)"
+                title="Record Payment Received"
+              >
+                <i class="bi bi-cash-coin"></i> Record Pay
+              </button>
+              <button
+                *ngIf="payment.due > 0"
+                class="btn btn-outline-primary"
+                (click)="markFull(payment)"
+                title="Mark as Full Paid"
+              >
+                <i class="bi bi-check-all"></i> Full Paid
+              </button>
+              <button
+                class="btn btn-outline-secondary"
+                (click)="openReceiptModal(payment)"
+                title="View & Print Payment Receipt"
+              >
+                <i class="bi bi-receipt"></i> Slip
+              </button>
+            </div>
+          </td>
+        </tr>
+
+        <tr *ngIf="filteredPayments.length === 0">
+          <td colspan="7" class="text-center py-5 text-muted">
+            <i class="bi bi-cash display-4 d-block mb-3 opacity-50"></i>
+            <h5>No Payment Records Found</h5>
+            <p class="small mb-3">No payments match the selected criteria for {{ selectedMonth }}.</p>
+            <p class="small text-secondary">Tip: Go to <strong>Dynamic Cost Split</strong> and click <em>"Push Shares to Roommate Payments"</em> to generate dues.</p>
+          </td>
+        </tr>
+      </tbody>
+      <tfoot *ngIf="filteredPayments.length > 0">
+        <tr class="fw-bold bg-light font-mono">
+          <td colspan="2">Total Room Summary</td>
+          <td class="text-primary fs-6">₹{{ getTotalBilled() | number:'1.2-2' }}</td>
+          <td class="text-success fs-6">₹{{ getTotalCollected() | number:'1.2-2' }}</td>
+          <td class="text-danger fs-6">₹{{ getTotalDue() | number:'1.2-2' }}</td>
+          <td colspan="2" class="text-muted">Settled: {{ getCollectionPercentage() }}%</td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+
+  <!-- UPI Quick Pay Modal -->
+  <div *ngIf="isUpiModalOpen" class="rcms-modal-backdrop" (click)="closeUpiModal()">
+    <div class="rcms-modal-content" (click)="$event.stopPropagation()">
+      <div class="p-4 border-bottom d-flex justify-content-between align-items-center">
+        <h5 class="mb-0 fw-bold">
+          <i class="bi bi-qr-code-scan text-primary me-2"></i>
+          UPI Quick Settle: {{ selectedPayment?.memberName }}
+        </h5>
+        <button type="button" class="btn-close" (click)="closeUpiModal()"></button>
+      </div>
+
+      <div class="p-4 text-center">
+        <div class="mb-3">
+          <span class="text-muted small">Outstanding Balance to Pay for {{ selectedPayment?.month }}:</span>
+          <div class="display-6 fw-bold text-danger font-mono">₹{{ selectedPayment?.due | number:'1.2-2' }}</div>
+        </div>
+
+        <div class="p-3 bg-light rounded-3 d-inline-block border mb-3">
+          <div class="bg-white p-3 rounded border text-center shadow-sm">
+            <i class="bi bi-qr-code display-1 text-dark"></i>
+            <div class="small text-muted mt-1 font-mono">Scan via GPay / PhonePe / Paytm</div>
+          </div>
+        </div>
+
+        <div class="p-3 bg-muted rounded-3 text-start mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-1">
+            <span class="small fw-bold text-muted">Room Lead UPI ID:</span>
+            <button class="btn btn-sm btn-outline-primary py-0" (click)="copyUpi('siva@oksbi')">
+              <i class="bi bi-clipboard"></i> Copy
+            </button>
+          </div>
+          <div class="font-mono fw-bold fs-6 text-primary">siva@oksbi</div>
+          <div class="small text-muted mt-1">Recipient Name: Siva (Room 101 Admin)</div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 pt-2 border-top">
+          <button class="btn btn-rcms-secondary" (click)="closeUpiModal()">
+            Close
+          </button>
+          <button class="btn btn-success text-white" (click)="closeUpiModal(); openRecordModal(selectedPayment!)">
+            <i class="bi bi-cash-coin"></i> Record Payment Done
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Record Payment Modal -->
+  <div *ngIf="isPaymentModalOpen" class="rcms-modal-backdrop" (click)="closeRecordModal()">
+    <div class="rcms-modal-content" (click)="$event.stopPropagation()">
+      <div class="p-4 border-bottom d-flex justify-content-between align-items-center">
+        <div>
+          <h5 class="mb-0 fw-bold">
+            <i class="bi bi-cash-coin text-success me-2"></i>
+            Record Payment from {{ selectedPayment?.memberName }}
+          </h5>
+          <span class="small text-muted">
+            {{ selectedPayment?.roomNo }} &bull; Month: {{ selectedPayment?.month }}
+          </span>
+        </div>
+        <button type="button" class="btn-close" (click)="closeRecordModal()"></button>
+      </div>
+
+      <div class="p-4">
+        <form (ngSubmit)="submitPayment()">
+          <div class="row g-3">
+            <div class="col-md-4">
+              <div class="p-2 border rounded text-center bg-light">
+                <div class="small text-muted">Room Share</div>
+                <div class="fw-bold font-mono fs-6 text-primary">₹{{ selectedPayment?.calculatedShare | number:'1.2-2' }}</div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="p-2 border rounded text-center bg-light">
+                <div class="small text-muted">Already Paid</div>
+                <div class="fw-bold font-mono fs-6 text-success">₹{{ selectedPayment?.paid | number:'1.2-2' }}</div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="p-2 border rounded text-center bg-light">
+                <div class="small text-muted">Due Amount</div>
+                <div class="fw-bold font-mono fs-6 text-danger">₹{{ selectedPayment?.due | number:'1.2-2' }}</div>
+              </div>
+            </div>
+
+            <div class="col-12 mt-3">
+              <label class="form-label small fw-bold">Payment Amount (₹) *</label>
+              <div class="input-group">
+                <span class="input-group-text bg-light fw-bold">₹</span>
+                <input
+                  type="number"
+                  class="form-control rcms-input font-mono fw-bold fs-5"
+                  step="0.01"
+                  min="0.01"
+                  [max]="selectedPayment?.due || 999999"
+                  [(ngModel)]="paymentAmount"
+                  name="payAmt"
+                  required
+                />
+              </div>
+              <div class="form-text small">Enter full due or partial installment.</div>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Payment Mode</label>
+              <select class="form-select rcms-select" [(ngModel)]="paymentMode" name="payMode">
+                <option value="UPI">UPI (Google Pay / PhonePe / Paytm)</option>
+                <option value="Cash">Cash Handover</option>
+                <option value="NetBanking">Net Banking (IMPS / NEFT)</option>
+                <option value="Card">Debit / Credit Card</option>
+              </select>
+            </div>
+
+            <div class="col-md-6">
+              <label class="form-label small fw-bold">Transaction / UTR Reference</label>
+              <input
+                type="text"
+                class="form-control rcms-input font-mono"
+                placeholder="e.g. UPI-98127391283"
+                [(ngModel)]="referenceNo"
+                name="payRef"
+              />
+            </div>
+
+            <div class="col-12">
+              <label class="form-label small fw-bold">Remarks</label>
+              <input
+                type="text"
+                class="form-control rcms-input"
+                placeholder="e.g. Paid via GPay, rent + wi-fi share"
+                [(ngModel)]="paymentNote"
+                name="payNote"
+              />
+            </div>
+          </div>
+
+          <div class="d-flex justify-content-end gap-2 mt-4 pt-3 border-top">
+            <button type="button" class="btn btn-rcms-secondary" (click)="closeRecordModal()">
+              Cancel
+            </button>
+            <button type="submit" class="btn btn-success fw-bold text-white">
+              <i class="bi bi-check2-circle"></i> Confirm Payment
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- View / Print Receipt Slip Modal -->
+  <div *ngIf="isReceiptModalOpen" class="rcms-modal-backdrop" (click)="closeReceiptModal()">
+    <div class="rcms-modal-content printable-area" (click)="$event.stopPropagation()">
+      <div class="p-4 border-bottom d-flex justify-content-between align-items-center no-print">
+        <h5 class="mb-0 fw-bold">
+          <i class="bi bi-receipt text-primary me-2"></i> Roommate Payment Receipt Slip
+        </h5>
+        <div class="d-flex gap-2">
+          <button class="btn btn-sm btn-outline-primary" (click)="printReceipt()">
+            <i class="bi bi-printer"></i> Print Slip
+          </button>
+          <button type="button" class="btn-close" (click)="closeReceiptModal()"></button>
+        </div>
+      </div>
+
+      <div class="p-4 printable-receipt">
+        <!-- Receipt Header -->
+        <div class="text-center pb-3 border-bottom mb-3">
+          <div class="d-inline-flex align-items-center gap-2 mb-1">
+            <div class="badge bg-primary fs-5 p-2 rounded">
+              <i class="bi bi-houses-fill"></i>
+            </div>
+            <h4 class="mb-0 fw-bold">Bachelor Room Cost Manager</h4>
+          </div>
+          <p class="text-muted small mb-0">Official Room Rent & Shared Expense Settlement Slip</p>
+        </div>
+
+        <!-- Receipt Meta -->
+        <div class="row g-2 mb-3 small">
+          <div class="col-6">
+            <div class="text-muted">Roommate Name:</div>
+            <div class="fw-bold fs-6">{{ selectedPayment?.memberName }}</div>
+          </div>
+          <div class="col-6 text-end">
+            <div class="text-muted">Bachelor Room & Month:</div>
+            <div class="fw-bold fs-6">{{ selectedPayment?.roomNo }} ({{ selectedPayment?.month }})</div>
+          </div>
+          <div class="col-6">
+            <div class="text-muted">Receipt Number:</div>
+            <div class="font-mono fw-bold">BR-REC-{{ selectedPayment?.id }}</div>
+          </div>
+          <div class="col-6 text-end">
+            <div class="text-muted">Status:</div>
+            <span
+              class="badge-pill-custom"
+              [ngClass]="selectedPayment?.status === 'Paid' ? 'badge-paid' : 'badge-partial'"
+            >
+              {{ selectedPayment?.status }}
+            </span>
+          </div>
+        </div>
+
+        <!-- Financial Summary Box -->
+        <div class="bg-light p-3 rounded-3 mb-3 border">
+          <div class="d-flex justify-content-between mb-2">
+            <span>Calculated Share:</span>
+            <span class="fw-bold font-mono">₹{{ selectedPayment?.calculatedShare | number:'1.2-2' }}</span>
+          </div>
+          <div class="d-flex justify-content-between mb-2 text-success">
+            <span>Amount Paid:</span>
+            <span class="fw-bold font-mono">₹{{ selectedPayment?.paid | number:'1.2-2' }}</span>
+          </div>
+          <div class="d-flex justify-content-between pt-2 border-top" [ngClass]="(selectedPayment?.due || 0) > 0 ? 'text-danger' : 'text-muted'">
+            <span class="fw-bold">Remaining Due:</span>
+            <span class="fw-bold font-mono fs-6">₹{{ selectedPayment?.due | number:'1.2-2' }}</span>
+          </div>
+        </div>
+
+        <!-- Transactions History -->
+        <div *ngIf="selectedPayment?.transactions?.length">
+          <h6 class="fw-bold small text-muted text-uppercase mb-2">Transaction History</h6>
+          <div class="table-responsive">
+            <table class="table table-sm table-bordered small">
+              <thead class="bg-light">
+                <tr>
+                  <th>Date</th>
+                  <th>Amount</th>
+                  <th>Mode</th>
+                  <th>Reference</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr *ngFor="let txn of selectedPayment?.transactions">
+                  <td class="font-mono">{{ txn.date }}</td>
+                  <td class="font-mono fw-bold text-success">₹{{ txn.amount | number:'1.2-2' }}</td>
+                  <td>{{ txn.paymentMode }}</td>
+                  <td class="font-mono text-muted">{{ txn.referenceNo }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="text-center pt-3 border-top mt-3 small text-muted">
+          Settlement confirmed for Room 101 bachelor sharing.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
