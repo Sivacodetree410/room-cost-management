@@ -1,42 +1,68 @@
 <div class="login-card">
 
-    <h2 class="mb-2">Welcome Back</h2>
-    <p class="text-muted mb-4">Sign in to Room Cost Management System</p>
+    <div class="d-flex align-items-center gap-2 mb-3">
+        <div class="badge bg-primary fs-5 p-2 rounded-3">
+            <i class="bi bi-houses-fill"></i>
+        </div>
+        <div>
+            <h3 class="mb-0 fw-bold">RCMS Login</h3>
+            <span class="small text-muted">Bachelor Room Cost Manager</span>
+        </div>
+    </div>
+
+    <p class="text-muted mb-3 small">Sign in with AES encrypted credentials</p>
+
+    <!-- Error Alert -->
+    <div *ngIf="errorMessage" class="alert alert-danger py-2 small mb-3">
+        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+        {{ errorMessage }}
+    </div>
 
     <form (ngSubmit)="onLogin()">
 
         <div class="mb-3">
-            <label class="form-label">Username</label>
+            <label class="form-label small fw-bold">Username</label>
             <input
                 type="text"
                 class="form-control"
-                placeholder="Enter username"
+                placeholder="e.g. siva, kumar, admin"
                 [(ngModel)]="username"
-                name="username">
+                name="username"
+                required>
         </div>
 
-        <div class="mb-4">
-            <label class="form-label">Password</label>
+        <div class="mb-3">
+            <label class="form-label small fw-bold">Password</label>
             <input
                 type="password"
                 class="form-control"
                 placeholder="Enter password"
                 [(ngModel)]="password"
-                name="password">
+                name="password"
+                required>
         </div>
 
-        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">
-            <i class="bi bi-box-arrow-in-right me-1"></i> Login to Portal
+        <div class="d-flex justify-content-between align-items-center mb-3 small">
+            <span class="badge bg-light text-muted border font-mono">
+                <i class="bi bi-shield-lock-fill text-success me-1"></i> AES-256 Enabled
+            </span>
+            <span class="text-muted">Token: JWT Bearer</span>
+        </div>
+
+        <button type="submit" class="btn btn-primary w-100 py-2 fw-bold" [disabled]="isLoading">
+            <span *ngIf="isLoading" class="spinner-border spinner-border-sm me-1" role="status"></span>
+            <i *ngIf="!isLoading" class="bi bi-box-arrow-in-right me-1"></i>
+            {{ isLoading ? 'Encrypting & Signing in...' : 'Sign In' }}
         </button>
 
         <div class="text-center mt-3">
-            <a routerLink="/portal/dashboard" class="forgot-link text-primary fw-semibold">
-                Explore Demo Portal &rarr;
+            <a routerLink="/portal/dashboard" class="forgot-link text-primary fw-semibold small">
+                Skip to Demo Portal &rarr;
             </a>
         </div>
         <div class="text-center mt-2">
-            <a routerLink="/RCMSRegistrations" class="forgot-link text-muted">
-                Create Account
+            <a routerLink="/RCMSRegistrations" class="forgot-link text-muted small">
+                Don't have an account? Register Here
             </a>
         </div>
 
